@@ -82,3 +82,10 @@ After imputation the average number of steps per day is `r format(m)` and the me
 Using the interval median for imputation seems to have reduced both the average and the median number of steps per day. 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r weekdays, echo=TRUE}
+imputed <- imputed %>%
+    mutate(wkday = weekdays(strptime(imputed$date,format="%Y-%m-%d"))) %>%
+    mutate(wkend = ifelse(wkday=="Sunday"|wkday=="Saturday", "weekend", "weekday"))
+by_interval <- imputed %>% group_by(interval, wkend) %>% summarize(steps=mean(steps))
+qplot(interval,steps,data=by_interval,facets=wkend~., geom="line")
+```

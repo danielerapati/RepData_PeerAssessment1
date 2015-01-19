@@ -1,0 +1,84 @@
+Reproducible Research: Peer Assessment 1
+=======================================
+
+## Loading and preprocessing the data
+
+Unzip the file and load the csv into R.
+```{r load, echo=TRUE}
+unzip("activity.zip")
+activity <- read.csv("activity.csv")
+head(activity)
+```
+
+Use dplyr for this analysis.
+```{r dplyr, echo=TRUE}
+library(dplyr)
+```
+
+## What is mean total number of steps taken per day?
+
+A quick look at the daily number steps distribution.
+```{r histogram, echo=TRUE, fig.height=4}
+library(ggplot2)
+steps_by_day <- activity %>% group_by(date) %>% summarize(steps=sum(steps))
+qplot(steps, data=steps_by_day, geom="histogram",binwidth=1000)
+m <- mean(steps_by_day$steps, na.rm=TRUE)
+md <- median(steps_by_day$steps, na.rm=TRUE)
+```
+
+The average number of steps per day is `r format(m)` and the median is `r md`.
+
+## What is the average daily activity pattern?
+
+```{r intervals, echo=TRUE, fig.height=4}
+by_interval <- activity %>% group_by(interval) %>% summarize(steps=mean(steps, na.rm=TRUE))
+with( by_interval, plot(interval, steps, type="l"))
+```
+
+There seems to be a spike in activity in the morning.
+
+The maximum number of steps over a 5 minutes interval is obtained in interval beginning at:
+```{r argmax, echo=TRUE}
+by_interval$interval[which.max(by_interval$steps)]
+```
+
+## Imputing missing values
+
+There are a high number of intervals with missing values:
+```{r missing, echo=TRUE}
+sum(is.na(activity$steps))
+```
+
+```{r missing analysis, echo=TRUE}
+missing <- activity %>% filter(is.na(steps)) %>% select(date, interval)
+summary(missing, maxsum=10)
+```
+
+The missing values are concentrated on 9 days for wi=hich there are no measurements at all.
+
+In this case a simple imputing strategy could be to use the median value over that interval.
+```{r imputing, echo=TRUE}
+median_by_interval <- activity %>% group_by(interval) %>% summarise(steps=median(steps, na.rm=TRUE))
+impute <- function(steps, interval) {
+    if(is.na(steps)) {
+        median_by_interval$steps[median_by_interval$interval==interval]
+    } else {
+        steps
+    }
+}
+imputed <- activity
+imputed$steps <- mapply(impute,imputed$steps, imputed$interval)
+```
+
+```{r evaluation, echo=TRUE, fig.height=4}
+imputed_by_day <- imputed %>% group_by(date) %>% summarize(steps=sum(steps))
+qplot(steps, data=imputed_by_day, geom="histogram",binwidth=1000)
+m <- mean(imputed_by_day$steps)
+md <- median(imputed_by_day$steps)
+```
+
+After imputation the average number of steps per day is `r format(m)` and the median is `r md`.
+
+Using the interval median for imputation seems to have reduced both the average and the median number of steps per day. 
+
+## Are there differences in activity patterns between weekdays and weekends?
